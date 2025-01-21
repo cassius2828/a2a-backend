@@ -25,6 +25,9 @@ const connectToDB = async () => {
 };
 
 connectToDB();
+///////////////////////////
+// Routers
+///////////////////////////
 const authRouter = require("./routes/auth");
 const formsRouter = require("./routes/forms");
 

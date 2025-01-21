@@ -71,6 +71,10 @@ const loginUser = async (req, res) => {
   }
 };
 
+///////////////////////////
+// ! DELETE | User by Id
+///////////////////////////
+
 const deleteUser = async (req, res) => {
   const { userId } = req.params;
   try {
@@ -86,6 +90,9 @@ const deleteUser = async (req, res) => {
   }
 };
 
+///////////////////////////
+// * PUT | Update User Info
+///////////////////////////
 const putUpdateUserInfo = async (req, res) => {
   const { userId } = req.params;
   const { firstName, lastName, email, phone } = req.body;
@@ -130,8 +137,6 @@ const putUpdateUserInfo = async (req, res) => {
     });
   }
 };
-
-
 
 module.exports = {
   loginUser,

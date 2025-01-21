@@ -1,10 +1,8 @@
 const { AthleteProfile } = require("../config/database");
 const { Testimonial } = require("../config/database");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-const { v4: uuidv4 } = require("uuid");
-
-// initalize s3 instance
 const s3 = new S3Client({ region: process.env.AWS_REGION });
+const { v4: uuidv4 } = require("uuid");
 ///////////////////////////
 // ! Testimonials
 ///////////////////////////
@@ -31,6 +29,7 @@ const getAllUserTestimonials = async (req, res) => {
     res.status(500).json({ error: `Unable to retrieve user testimonials` });
   }
 };
+
 const getSingleTestimonial = async (req, res) => {
   const { id } = req.params;
   try {
@@ -80,6 +79,7 @@ const postAddTestimonial = async (req, res) => {
     });
   }
 };
+
 const putUpdateTestimonial = async (req, res) => {
   const { name, text } = req.body;
   const { id } = req.params;
@@ -157,9 +157,6 @@ const getAllSpotlights = (req, res) => {
   }
 };
 
-///////////////////////////
-// GET | Spotlight by ID
-///////////////////////////
 const getSpotlightByID = async (req, res) => {
   const { userId } = req.params;
   try {
