@@ -55,11 +55,12 @@ const loginUser = async (req, res) => {
     const isPasswordValid = bcrypt.compareSync(password, user.password_hash);
     if (!isPasswordValid) {
       return res
-        .status(404)
+        .status(400)
         .json({ error: "Invalid credentials. Please try again" });
     }
 
     const token = jwt.sign({ user }, process.env.JWT_SECRET);
+    res.locals.user = user;
     res.status(200).json({ token });
   } catch (err) {
     console.error(err);

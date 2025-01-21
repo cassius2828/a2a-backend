@@ -39,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
   // Add the toJSON method to exclude the password field
   User.prototype.toJSON = function () {
     const values = Object.assign({}, this.get());
-    delete values.password;
+    delete values.password_hash;
     return values;
   };
   return User;

@@ -10,8 +10,9 @@ const sequelize = new Sequelize(DB_NAME, DB_USERNAME, DB_PASS, {
   dialect,
 });
 const User = require("../models/user")(sequelize, Sequelize.DataTypes);
+const Testimonial = require("../models/testimonial")(sequelize, Sequelize.DataTypes);
 const AthleteProfile = require("../models/athleteProfile")(
   sequelize,
   Sequelize.DataTypes
 );
-module.exports = { sequelize, User, AthleteProfile };
+module.exports = { sequelize, User, AthleteProfile,Testimonial };
