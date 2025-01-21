@@ -43,6 +43,14 @@ module.exports = (sequelize, DataTypes) => {
       action_image_2: {
         type: DataTypes.TEXT,
       },
+      status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "pending",
+        validate: {
+          isIn: [["pending", "approved", "rejected"]],
+        },
+      },
       created_by: {
         type: DataTypes.INTEGER,
         allowNull: false,

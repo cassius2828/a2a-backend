@@ -60,6 +60,7 @@ const loginUser = async (req, res) => {
     }
 
     const token = jwt.sign({ user }, process.env.JWT_SECRET);
+    res.locals.user = user;
     res.status(200).json({ token });
   } catch (err) {
     console.error(err);
