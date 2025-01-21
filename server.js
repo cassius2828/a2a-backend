@@ -8,7 +8,7 @@ app.use(cors());
 dotenv.config();
 // vars
 const PORT = process.env.PORT || 3000;
-const {sequelize} = require("./config/database");
+const { sequelize } = require("./config/database");
 
 const connectToDB = async () => {
   try {
@@ -18,14 +18,7 @@ const connectToDB = async () => {
         Database Configuration:
         ------------------------
         Database: ${sequelize.config.database}
-        Username: ${sequelize.config.username}
-        Host: ${sequelize.config.host}
-        Port: ${sequelize.config.port}
       `);
-      const queryInterface = sequelize.getQueryInterface();
-      const tables = await queryInterface.showAllTables();
-
-      console.log(tables, ' <-- tabnles')
   } catch (error) {
     console.error("Unable to connect to the database:", error);
   }

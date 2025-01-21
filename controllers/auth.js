@@ -1,7 +1,10 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { User, sequelize } = require("../config/database");
-
+// aws s3 setup
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { v4: uuidv4 } = require("uuid");
+const s3 = new S3Client({ region: process.env.AWS_REGION });
 ///////////////////////////
 // ? POST | Register User
 ///////////////////////////
@@ -83,20 +86,56 @@ const deleteUser = async (req, res) => {
   }
 };
 
-const testUserModel = async (req, res) => {
-  console.log(User, " <-- user model");
-  console.log(sequelize.models, " <-- sequelize models");
-  console.log(User.findOne);
+const putUpdateUserInfo = async (req, res) => {
+  const { userId } = req.params;
+  const { firstName, lastName, email, phone } = req.body;
   try {
-    res.send("sebdubg yser");
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ error: `Unable to find user with an userId of ${userId}` });
+    }
+
+    let filePath;
+    let params;
+    let avatarLink;
+    if (req.file) {
+      filePath = `a2a/images/users/${firstName}-${lastName}-${userId}/avatar-${uuidv4()}-${
+        req.file.originalname
+      }`;
+      params = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: filePath,
+        Body: req.file.buffer,
+      };
+
+      s3.send(new PutObjectCommand(params));
+      avatarLink = `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath}`;
+    }
+
+    user.first_name = firstName;
+    user.last_name = lastName;
+    user.email = email;
+    user.phone = phone;
+    user.avatar = avatarLink || "";
+    await user.save();
+    const token = jwt.sign({ user }, process.env.JWT_SECRET);
+
+    res.status(200).json({ message: `Updated user information`, token });
   } catch (err) {
-    res.send("fail");
+    console.error(err);
+    res.status(500).json({
+      error: `Unable to update user information for user with id of ${userId}`,
+    });
   }
 };
+
+
 
 module.exports = {
   loginUser,
   registerUser,
-  testUserModel,
   deleteUser,
+  putUpdateUserInfo,
 };
