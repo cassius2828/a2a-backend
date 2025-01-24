@@ -78,13 +78,34 @@ const loginUser = async (req, res) => {
 ///////////////////////////
 
 const deleteUser = async (req, res) => {
-  const { userId } = req.params;
+  const { password } = req.body;
+  const { id } = req.user.user;
+
   try {
-    const deletedRows = await User.destroy({ where: { id: userId } });
-    if (deletedRows) {
-      res.status(200).json({ message: "Successfully deleted user" });
+    const signedInUser = req.user;
+    const targetUser = await User.findByPk(id);
+    if (!targetUser) {
+      return res.status(404).json({ error: `Targeted user does not exist.` });
+    }
+    const isPasswordValid = bcrypt.compareSync(
+      password,
+      targetUser.password_hash
+    );
+    if (!isPasswordValid) {
+      return res
+        .status(400)
+        .json({ error: `Invalid credentials. Cannot delete user` });
+    }
+    if (signedInUser.id !== targetUser.id && signedInUser.role !== "admin") {
+      return res
+        .status(400)
+        .json({ error: `You do not have the permissions to delete this user` });
+    }
+    const deleteTargetedUser = await User.destroy({ where: { id } });
+    if (deleteTargetedUser > 0) {
+      return res.status(200).json({ message: `Successfully deleted user` });
     } else {
-      res.status(404).json({ error: "User not found" });
+      res.status(400).json({ error: "Unable to delete user" });
     }
   } catch (err) {
     console.error(err);
@@ -96,23 +117,23 @@ const deleteUser = async (req, res) => {
 // * PUT | Update User Info
 ///////////////////////////
 const putUpdateUserInfo = async (req, res) => {
-  const { userId } = req.params;
+  const { id } = req.user.user;
   const { firstName, lastName, email, phone } = req.body;
   let confirmEmailMessage = "";
   try {
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(id);
 
     if (!user) {
       return res
         .status(404)
-        .json({ error: `Unable to find user with an userId of ${userId}` });
+        .json({ error: `Unable to find user with an id of ${id}` });
     }
 
     let filePath;
     let params;
     let avatarLink;
     if (req.file) {
-      filePath = `a2a/images/users/${firstName}-${lastName}-${userId}/avatar-${uuidv4()}-${
+      filePath = `a2a/images/users/${firstName}-${lastName}-${id}/avatar-${uuidv4()}-${
         req.file.originalname
       }`;
       params = {
@@ -158,9 +179,10 @@ const putUpdateUserInfo = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: `Unable to update user information for user with id of ${userId}`,
+      error: `Unable to update user information for user with id of ${id}`,
     });
   }
+
 };
 
 ///////////////////////////
@@ -169,10 +191,10 @@ const putUpdateUserInfo = async (req, res) => {
 
 const putUpdatePassword = async (req, res) => {
   const { password, confirmPassword, newPassword } = req.body;
-  const { userId } = req.params;
+  const { id } = req.user.user;
   try {
     // if user does not exist
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({ error: "User does not exist" });
     }
@@ -218,7 +240,8 @@ const putUpdatePassword = async (req, res) => {
 // * PUT | Confirm Email Change
 ///////////////////////////
 const putConfirmEmailChange = async (req, res) => {
-  const { userId, email, password } = req.body;
+  const {  email, password } = req.body;
+  const { id } = req.user.user;
   const { token } = req.query;
   try {
     if (isTokenExpired(token, 10)) {
@@ -226,7 +249,7 @@ const putConfirmEmailChange = async (req, res) => {
         error: `Token is expired. Please submit an email change again and complete the steps before the expiration.`,
       });
     }
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(id);
     const isPasswordValid = bcrypt.compareSync(password, user.password_hash);
     if (!isPasswordValid) {
       return res.status(400).json({
@@ -282,10 +305,12 @@ const transporter = nodemailer.createTransport({
 // confirmEmail function to send the confirmation email
 const confirmEmail = async (email, user) => {
   try {
-    // Generate a JWT token with the updated user data
-    const token = jwt.sign({ user }, process.env.JWT_SECRET, {
-      expiresIn: "1m",
-    });
+    // Generate a JWT token with only userId and email
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "10m" }
+    );
     const confirmLink =
       process.env.NODE_ENV === "production"
         ? `https://${
