@@ -17,7 +17,12 @@ router.post(
   upload.array("photos", 3),
   formsCtrl.postAddSpotlight
 );
-router.put("/spotlights/:userId", formsCtrl.putUpdateSpotlight);
+
+router.put(
+  "/spotlights/:userId",
+  upload.array("photos", 3),
+  formsCtrl.putUpdateSpotlight
+);
 router.delete("/spotlights/:id", formsCtrl.deleteSpotlight);
 
 module.exports = router;
