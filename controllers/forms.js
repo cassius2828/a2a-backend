@@ -291,11 +291,9 @@ const postAddSpotlight = async (req, res) => {
     });
 
     if (newAthleteSpotlight) {
-      return res
-        .status(200)
-        .json(
-          `Created new athlete spotlight for ${newAthleteSpotlight.first_name} ${newAthleteSpotlight.last_name}. This spotlight will be sent for review by the admin to get approval to be on the A2A website!`
-        );
+      return res.status(200).json({
+        message: `Created new athlete spotlight for ${newAthleteSpotlight.first_name} ${newAthleteSpotlight.last_name}. This spotlight will be sent for review by the admin to get approval to be on the A2A website!`,
+      });
     } else {
       return res.status(500).json({
         error: `Unable to create new athlete spotlight for ${firstName} ${lastName}`,
@@ -308,8 +306,7 @@ const postAddSpotlight = async (req, res) => {
 };
 
 const putUpdateSpotlight = async (req, res) => {
-  //   const userId = req.session._id;
-  const userId = 3;
+  const { userId } = req.params;
   const {
     firstName,
     lastName,
@@ -319,17 +316,16 @@ const putUpdateSpotlight = async (req, res) => {
     actionBio,
     communityBio,
     location,
-    profileImage,
-    actionImage1,
-    actionImage2,
   } = req.body;
   try {
     const existingSpotlight = await AthleteProfile.findOne({
-      created_by: userId,
+      where: {
+        created_by: userId,
+      },
     });
-    if (existingSpotlight) {
+    if (!existingSpotlight) {
       return res.status(400).json({
-        error: `User with id of ${userId} already has an athlete spotlight. Please go to edit your current spotlight or contact developer for assistance at cassius.reynolds.dev@gmail.com`,
+        error: `Could not find athlete spotlight to update`,
       });
     }
     if (!firstName || !lastName || !sport) {
@@ -338,35 +334,98 @@ const putUpdateSpotlight = async (req, res) => {
           "Please enter your first name, last name, and sport to be considered for an athlete spotlight",
       });
     }
-    const newAthleteSpotlight = await AthleteProfile.create({
-      first_name: firstName,
-      last_name: lastName,
-      grad_year: graduationYear,
-      sport,
-      general_bio: generalBio,
-      action_bio: actionBio,
-      community_bio: communityBio,
-      location,
-      profile_image: profileImage,
-      action_image_1: actionImage1,
-      action_image_2: actionImage2,
-      created_by: userId,
-    });
-    if (newAthleteSpotlight) {
-      return res
-        .status(200)
-        .json(
-          `Created new athlete spotlight for ${newAthleteSpotlight.first_name} ${newAthleteSpotlight.last_name}`
-        );
-    } else {
-      res.status(500).json({
-        error:
-          "Unable to create new athlete spotlight for " +
-          firstName +
-          " " +
-          lastName,
-      });
+
+    // Set up S3 variables
+    let filePath1, filePath2, filePath3;
+    let params1, params2, params3;
+
+    if (req.files.length === 3) {
+      // Generate unique file paths for each image
+      filePath1 = `a2a/images/athletes/${firstName}-${lastName}-${userId}/profileImage-${uuidv4()}-${
+        req.files[0]?.originalname
+      }`;
+      filePath2 = `a2a/images/athletes/${firstName}-${lastName}-${userId}/actionImage1-${uuidv4()}-${
+        req.files[1]?.originalname
+      }`;
+      filePath3 = `a2a/images/athletes/${firstName}-${lastName}-${userId}/actionImage2-${uuidv4()}-${
+        req.files[2]?.originalname
+      }`;
+
+      // Set up the S3 upload parameters for each file
+      params1 = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: filePath1,
+        Body: req.files[0]?.buffer,
+      };
+      params2 = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: filePath2,
+        Body: req.files[1]?.buffer,
+      };
+      params3 = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: filePath3,
+        Body: req.files[2]?.buffer,
+      };
+
+      // Prepare the upload promises conditionally based on file existence
+      const uploadPromises = [];
+
+      // Check if profile image exists, then add the upload promise
+      if (req.files[0]?.originalname) {
+        uploadPromises.push(s3.send(new PutObjectCommand(params1)));
+      }
+
+      // Check if action image 1 exists, then add the upload promise
+      if (req.files[1]?.originalname) {
+        uploadPromises.push(s3.send(new PutObjectCommand(params2)));
+      }
+
+      // Check if action image 2 exists, then add the upload promise
+      if (req.files[2]?.originalname) {
+        uploadPromises.push(s3.send(new PutObjectCommand(params3)));
+      }
+
+      // If there are any promises (i.e., files to upload), execute them
+      if (uploadPromises.length > 0) {
+        await Promise.all(uploadPromises);
+      } else {
+        console.log("No files to upload to s3.");
+      }
     }
+
+    // Update the fields of the existingSpotlight
+    existingSpotlight.first_name = firstName;
+    existingSpotlight.last_name = lastName;
+    existingSpotlight.grad_year = graduationYear;
+    existingSpotlight.sport = sport;
+    existingSpotlight.general_bio = generalBio;
+    existingSpotlight.action_bio = actionBio;
+    existingSpotlight.community_bio = communityBio;
+    existingSpotlight.location = location;
+
+  
+    // Complete S3 URLs and updates to photo columns
+    if (filePath1) {
+      const profile_image = `https://${params1.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath1}`;
+
+      existingSpotlight.profile_image = profile_image;
+    }
+    if (filePath2) {
+      const action_image_1 = `https://${params2.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath2}`;
+      existingSpotlight.action_image_1 = action_image_1;
+    }
+    if (filePath3) {
+      const action_image_2 = `https://${params3.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath3}`;
+      existingSpotlight.action_image_2 = action_image_2;
+    }
+
+    // Save the updated record to the database
+    await existingSpotlight.save();
+    console.log(existingSpotlight, " <-- updated spotlight");
+    res.status(200).json({
+      message: `Updated athlete spotlight for ${existingSpotlight.first_name} ${existingSpotlight.last_name}`,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "unable to add new athlete spotlight" });

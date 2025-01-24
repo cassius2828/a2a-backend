@@ -1,3 +1,5 @@
+const bcrypt = require("bcrypt");
+
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define("user", {
     id: {
@@ -40,11 +42,18 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: "client",
     },
   });
+  User.beforeUpdate(async (user) => {
+    // Hash the password if it's modified
+    if (user.changed("password_hash")) {
+      user.password_hash = bcrypt.hashSync(user.password_hash, 10);
+    }
+  });
   // Add the toJSON method to exclude the password field
   User.prototype.toJSON = function () {
     const values = Object.assign({}, this.get());
     delete values.password_hash;
     return values;
   };
+
   return User;
 };
