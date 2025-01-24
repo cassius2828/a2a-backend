@@ -78,30 +78,21 @@ const loginUser = async (req, res) => {
 ///////////////////////////
 
 const deleteUser = async (req, res) => {
-  const { password } = req.body;
-  const { id } = req.user.user;
-
+  const { userId } = req.params;
+  // password validation is checked before this function is ran via post req to said fn on different route
   try {
-    const signedInUser = req.user;
-    const targetUser = await User.findByPk(id);
+    const signedInUser = req.user.user;
+    const targetUser = await User.findByPk(userId);
     if (!targetUser) {
       return res.status(404).json({ error: `Targeted user does not exist.` });
     }
-    const isPasswordValid = bcrypt.compareSync(
-      password,
-      targetUser.password_hash
-    );
-    if (!isPasswordValid) {
-      return res
-        .status(400)
-        .json({ error: `Invalid credentials. Cannot delete user` });
-    }
+
     if (signedInUser.id !== targetUser.id && signedInUser.role !== "admin") {
       return res
         .status(400)
         .json({ error: `You do not have the permissions to delete this user` });
     }
-    const deleteTargetedUser = await User.destroy({ where: { id } });
+    const deleteTargetedUser = await User.destroy({ where: { id: userId } });
     if (deleteTargetedUser > 0) {
       return res.status(200).json({ message: `Successfully deleted user` });
     } else {
@@ -110,6 +101,27 @@ const deleteUser = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Unable to delete user" });
+  }
+};
+
+const postValidateUserPassword = async (req, res) => {
+  const { id } = req.user.user;
+  const { password } = req.body;
+  try {
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ error: `User not found` });
+    }
+    const isPasswordValid = bcrypt.compareSync(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res
+        .status(400)
+        .json({ error: `Invalid credentials. Please try again.` });
+    }
+
+    res.status(201).json({ message: `Password has been validated` });
+  } catch (err) {
+    res.status(500).json({ error: `Unable to validate user password` });
   }
 };
 
@@ -182,7 +194,6 @@ const putUpdateUserInfo = async (req, res) => {
       error: `Unable to update user information for user with id of ${id}`,
     });
   }
-
 };
 
 ///////////////////////////
@@ -240,7 +251,7 @@ const putUpdatePassword = async (req, res) => {
 // * PUT | Confirm Email Change
 ///////////////////////////
 const putConfirmEmailChange = async (req, res) => {
-  const {  email, password } = req.body;
+  const { email, password } = req.body;
   const { id } = req.user.user;
   const { token } = req.query;
   try {
@@ -288,6 +299,7 @@ module.exports = {
   putUpdateUserInfo,
   putUpdatePassword,
   putConfirmEmailChange,
+  postValidateUserPassword,
 };
 
 // Configure your email transport

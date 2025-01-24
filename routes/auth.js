@@ -13,7 +13,16 @@ router.put(
   authCtrl.putUpdateUserInfo
 );
 router.put("/:userId/update-password", verifyToken, authCtrl.putUpdatePassword);
-router.put("/:userId/confirm-email",verifyToken, authCtrl.putConfirmEmailChange);
-router.delete("/delete/:userId", verifyToken, authCtrl.deleteUser);
+router.put(
+  "/:userId/confirm-email",
+  verifyToken,
+  authCtrl.putConfirmEmailChange
+);
+router.delete("/:userId/delete", verifyToken, authCtrl.deleteUser);
+router.post(
+  "/:userId/validate-user-password",
+  verifyToken,
+  authCtrl.postValidateUserPassword
+);
 
 module.exports = router;
