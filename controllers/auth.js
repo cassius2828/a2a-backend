@@ -126,7 +126,7 @@ const putUpdateUserInfo = async (req, res) => {
     }
     // check if another user is using the new email already
     const userByEmail = await User.findOne({ where: { email } });
-    if (userByEmail) {
+    if (userByEmail && userByEmail.id !== user.id) {
       return res.status(400).json({
         error: `There is already a user who has the email of ${email}. Please select a different email to set as your new email.`,
       });
@@ -218,7 +218,7 @@ const putUpdatePassword = async (req, res) => {
 // * PUT | Confirm Email Change
 ///////////////////////////
 const putConfirmEmailChange = async (req, res) => {
-  const { userId, email } = req.body;
+  const { userId, email, password } = req.body;
   const { token } = req.query;
   try {
     if (isTokenExpired(token, 10)) {
@@ -227,6 +227,13 @@ const putConfirmEmailChange = async (req, res) => {
       });
     }
     const user = await User.findByPk(userId);
+    const isPasswordValid = bcrypt.compareSync(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        passwordError: `Invalid password for this user. Please tyy again`,
+      });
+    }
+
     const prevEmail = user.email;
     if (!user) {
       return res.status(404).json({ error: "Cannot find user" });
