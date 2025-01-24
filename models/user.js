@@ -44,7 +44,7 @@ module.exports = (sequelize, DataTypes) => {
   });
   User.beforeUpdate(async (user) => {
     // Hash the password if it's modified
-    if (user.changed("password_hash")) {
+    if (user.changed("password_hash") && user.password_hash) {
       user.password_hash = bcrypt.hashSync(user.password_hash, 10);
     }
   });

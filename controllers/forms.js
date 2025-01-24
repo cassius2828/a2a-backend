@@ -461,6 +461,8 @@ const deleteSpotlight = async (req, res) => {
     });
   }
 };
+
+
 module.exports = {
   getAllTestimonials,
   getAllSpotlights,

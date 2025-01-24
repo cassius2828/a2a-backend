@@ -7,6 +7,7 @@ router.post("/login", authCtrl.loginUser);
 router.post("/register", authCtrl.registerUser);
 router.put("/:userId", upload.single("avatar"), authCtrl.putUpdateUserInfo);
 router.put("/:userId/update-password", authCtrl.putUpdatePassword)
+router.put("/:userId/confirm-email", authCtrl.putConfirmEmailChange)
 router.delete("/delete/:userId", authCtrl.deleteUser);
 
 module.exports = router;
