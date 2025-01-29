@@ -146,6 +146,51 @@ const deleteTestimonial = async (req, res) => {
   }
 };
 
+const getTestimonialSubmissionByStatus = async (req, res) => {
+  const { status } = req.query;
+  const userId = req.user.user.id;
+
+  try {
+    if (userId !== process.env.ADMIN_ID) {
+      return res.status(403).json({ error: `Unauthorized action` });
+    }
+    const testimonials = await Testimonial.findAll({
+      where: { status },
+      attributes: ["id", "status", "name", "createdAt"],
+    });
+    res.status(201).json(testimonials);
+  } catch (err) {
+    res.status(500).json({ error: "Unable to get approved spotlights" });
+  }
+};
+
+const putUpdateTestimonialStatus = async (req, res) => {
+  const { status, adminComment } = req.body;
+  const userId = req.user.user.id;
+  const { id } = req.params;
+  try {
+    if (userId !== process.env.ADMIN_ID) {
+      return res
+        .status(403)
+        .json({ error: `Not Authorized to update the document status` });
+    }
+    const testimonialToUpdate = await Testimonial.findByPk(id);
+    testimonialToUpdate.status = status;
+    if (adminComment) {
+      testimonialToUpdate.admin_comment = status;
+    }
+    await testimonialToUpdate.save();
+    res.status(201).json({
+      message: `Testimonial status changed to ${status}`,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: `Unable to update the status of testimonial with id of ${id} to ${status}`,
+    });
+  }
+};
+
 ///////////////////////////
 //  !  Spotlights
 ///////////////////////////
@@ -404,7 +449,6 @@ const putUpdateSpotlight = async (req, res) => {
     existingSpotlight.community_bio = communityBio;
     existingSpotlight.location = location;
 
-  
     // Complete S3 URLs and updates to photo columns
     if (filePath1) {
       const profile_image = `https://${params1.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath1}`;
@@ -462,6 +506,58 @@ const deleteSpotlight = async (req, res) => {
   }
 };
 
+const getSpotlightSubmissionByStatus = async (req, res) => {
+  const { status } = req.query;
+  const userId = req.user.user.id;
+
+  try {
+    if (userId !== process.env.ADMIN_ID) {
+      return res.status(403).json({ error: `Unauthorized action` });
+    }
+    const spotlights = await AthleteProfile.findAll({
+      where: { status },
+      attributes: [
+        "id",
+        "first_name",
+        "last_name",
+        "status",
+        "sport",
+        "createdAt",
+        "grad_year",
+      ],
+    });
+    res.status(201).json(spotlights);
+  } catch (err) {
+    res.status(500).json({ error: "Unable to get approved spotlights" });
+  }
+};
+
+const putUpdateSpotlightStatus = async (req, res) => {
+  const { status, adminComment } = req.body;
+  const userId = req.user.user.id;
+  const { id } = req.params;
+  try {
+    if (userId !== process.env.ADMIN_ID) {
+      return res
+        .status(403)
+        .json({ error: `Not Authorized to update the document status` });
+    }
+    const spotlightToUpdate = await AthleteProfile.findByPk(id);
+    spotlightToUpdate.status = status;
+    if (adminComment) {
+      spotlightToUpdate.admin_comment = adminComment;
+    }
+    await spotlightToUpdate.save();
+    res.status(201).json({
+      message: `Spotlight status changed to ${status}`,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: `Unable to update the status of Spotlight with id of ${id} to ${status}`,
+    });
+  }
+};
 
 module.exports = {
   getAllTestimonials,
@@ -475,4 +571,8 @@ module.exports = {
   putUpdateTestimonial,
   deleteTestimonial,
   deleteSpotlight,
+  getSpotlightSubmissionByStatus,
+  getTestimonialSubmissionByStatus,
+  putUpdateTestimonialStatus,
+  putUpdateSpotlightStatus,
 };

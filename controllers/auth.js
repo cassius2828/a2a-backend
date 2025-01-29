@@ -178,7 +178,9 @@ const putUpdateUserInfo = async (req, res) => {
     user.first_name = firstName;
     user.last_name = lastName;
     user.phone = phone;
-    user.avatar = avatarLink || "";
+    if (avatarLink) {
+      user.avatar = avatarLink;
+    }
     await user.save();
     const token = jwt.sign({ user }, process.env.JWT_SECRET);
 
@@ -319,7 +321,7 @@ const confirmEmail = async (email, user) => {
   try {
     // Generate a JWT token with only userId and email
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user?.id, email: user?.email },
       process.env.JWT_SECRET,
       { expiresIn: "10m" }
     );
