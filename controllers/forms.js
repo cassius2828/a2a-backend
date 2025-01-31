@@ -106,6 +106,7 @@ const putUpdateTestimonial = async (req, res) => {
     }
     testimonialToUpdate.name = name;
     testimonialToUpdate.text = text;
+    testimonialToUpdate.status = "pending";
     await testimonialToUpdate.save();
 
     res.status(200).json({
@@ -472,6 +473,7 @@ const putUpdateSpotlight = async (req, res) => {
     existingSpotlight.action_bio = actionBio;
     existingSpotlight.community_bio = communityBio;
     existingSpotlight.location = location;
+    existingSpotlight.status = "pending";
 
     // Complete S3 URLs and updates to photo columns
     if (filePath1) {
@@ -571,7 +573,6 @@ const putUpdateSpotlightStatus = async (req, res) => {
     keptStatus = status === spotlightToUpdate.status;
     spotlightToUpdate.status = status;
     spotlightToUpdate.admin_comment = adminComment;
-
 
     await spotlightToUpdate.save();
     if (keptStatus) {
