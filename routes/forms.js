@@ -31,7 +31,8 @@ router.get(
   verifyToken,
   formsCtrl.getSpotlightSubmissionByStatus
 );
-router.get("/spotlights/:userId", formsCtrl.getSpotlightByID);
+router.get("/spotlights/:spotlightId/spotlight-id", formsCtrl.getSpotlightBySpotlightID);
+router.get("/spotlights/:userId", formsCtrl.getSpotlightByUserID);
 router.put(
   "/spotlights/:id/status",
   verifyToken,

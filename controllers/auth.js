@@ -35,6 +35,7 @@ const registerUser = async (req, res) => {
       email,
       phone,
       password_hash: hashedPass,
+      avatar: process.env.FALLBACK_PFP,
     });
     let token = jwt.sign({ user }, process.env.JWT_SECRET);
     res.status(200).json({ token });
@@ -130,7 +131,9 @@ const postValidateUserPassword = async (req, res) => {
 ///////////////////////////
 const putUpdateUserInfo = async (req, res) => {
   const { id } = req.user.user;
-  const { firstName, lastName, email, phone } = req.body;
+  const { firstName, lastName, email, phone, removeAvatar } = req.body;
+  console.log(req.body, " <-- reqbody");
+  console.log(req.file, " <-- reqfile");
   let confirmEmailMessage = "";
   try {
     const user = await User.findByPk(id);
@@ -144,6 +147,12 @@ const putUpdateUserInfo = async (req, res) => {
     let filePath;
     let params;
     let avatarLink;
+    // if user set the remove avatar to true and there is no new file sent along
+    if (removeAvatar && !req.file) {
+      avatarLink = process.env.FALLBACK_PFP;
+    }
+
+    // if a user sent a new file along
     if (req.file) {
       filePath = `a2a/images/users/${firstName}-${lastName}-${id}/avatar-${uuidv4()}-${
         req.file.originalname

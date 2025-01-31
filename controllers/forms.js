@@ -177,7 +177,7 @@ const putUpdateTestimonialStatus = async (req, res) => {
     const testimonialToUpdate = await Testimonial.findByPk(id);
     testimonialToUpdate.status = status;
     if (adminComment) {
-      testimonialToUpdate.admin_comment = status;
+      testimonialToUpdate.admin_comment = adminComment;
     }
     await testimonialToUpdate.save();
     res.status(201).json({
@@ -202,8 +202,9 @@ const getAllSpotlights = (req, res) => {
   }
 };
 
-const getSpotlightByID = async (req, res) => {
+const getSpotlightByUserID = async (req, res) => {
   const { userId } = req.params;
+  console.log(userId, " <-- USER ID");
   try {
     const targetedSpotlight = await AthleteProfile.findOne({
       where: { created_by: userId },
@@ -212,6 +213,25 @@ const getSpotlightByID = async (req, res) => {
       return res
         .status(404)
         .json({ error: `Cannot find the spotlight for user ${userId}` });
+    }
+    res.status(200).json(targetedSpotlight);
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: `Sever error: Unable to get targeted spotlight` });
+  }
+};
+
+const getSpotlightBySpotlightID = async (req, res) => {
+  const { spotlightId } = req.params;
+  console.log(spotlightId, " <-- SPOTLIGHT ID");
+  try {
+    const targetedSpotlight = await AthleteProfile.findByPk(spotlightId);
+    if (!targetedSpotlight) {
+      return res
+        .status(404)
+        .json({ error: `Cannot find the spotlight for user ${spotlightId}` });
     }
     res.status(200).json(targetedSpotlight);
   } catch (err) {
@@ -536,6 +556,7 @@ const putUpdateSpotlightStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = req.user.user.id;
   const { id } = req.params;
+  console.log(adminComment, ' <-- ADC')
   try {
     if (userId !== process.env.ADMIN_ID) {
       return res
@@ -563,7 +584,7 @@ module.exports = {
   getAllTestimonials,
   getAllSpotlights,
   postAddTestimonial,
-  getSpotlightByID,
+  getSpotlightByUserID,
   postAddSpotlight,
   putUpdateSpotlight,
   getSingleTestimonial,
@@ -575,4 +596,5 @@ module.exports = {
   getTestimonialSubmissionByStatus,
   putUpdateTestimonialStatus,
   putUpdateSpotlightStatus,
+  getSpotlightBySpotlightID,
 };
