@@ -19,6 +19,7 @@ const connectToDB = async () => {
         ------------------------
         Database: ${sequelize.config.database}
       `);
+      console.log(process.env.NODE_ENV, ' <-- environment')
   } catch (error) {
     console.error("Unable to connect to the database:", error);
   }
