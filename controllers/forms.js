@@ -168,6 +168,7 @@ const putUpdateTestimonialStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = req.user.user.id;
   const { id } = req.params;
+  let keptStatus = false;
   try {
     if (userId !== process.env.ADMIN_ID) {
       return res
@@ -175,11 +176,14 @@ const putUpdateTestimonialStatus = async (req, res) => {
         .json({ error: `Not Authorized to update the document status` });
     }
     const testimonialToUpdate = await Testimonial.findByPk(id);
+    keptStatus = status === testimonialToUpdate.status;
     testimonialToUpdate.status = status;
-    if (adminComment) {
-      testimonialToUpdate.admin_comment = adminComment;
-    }
+    testimonialToUpdate.admin_comment = adminComment;
+
     await testimonialToUpdate.save();
+    if (keptStatus) {
+      return res.status(201).json({ message: `Updated admin comment message` });
+    }
     res.status(201).json({
       message: `Testimonial status changed to ${status}`,
     });
@@ -556,7 +560,7 @@ const putUpdateSpotlightStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = req.user.user.id;
   const { id } = req.params;
-  console.log(adminComment, ' <-- ADC')
+  let keptStatus = false;
   try {
     if (userId !== process.env.ADMIN_ID) {
       return res
@@ -564,11 +568,15 @@ const putUpdateSpotlightStatus = async (req, res) => {
         .json({ error: `Not Authorized to update the document status` });
     }
     const spotlightToUpdate = await AthleteProfile.findByPk(id);
+    keptStatus = status === spotlightToUpdate.status;
     spotlightToUpdate.status = status;
-    if (adminComment) {
-      spotlightToUpdate.admin_comment = adminComment;
-    }
+    spotlightToUpdate.admin_comment = adminComment;
+
+
     await spotlightToUpdate.save();
+    if (keptStatus) {
+      return res.status(201).json({ message: `Updated admin comment message` });
+    }
     res.status(201).json({
       message: `Spotlight status changed to ${status}`,
     });
