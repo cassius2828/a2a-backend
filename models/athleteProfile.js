@@ -60,6 +60,10 @@ module.exports = (sequelize, DataTypes) => {
         },
         onUpdate: "CASCADE",
       },
+      admin_comment: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
     },
     {
       tableName: "athlete_profiles",

@@ -106,6 +106,7 @@ const putUpdateTestimonial = async (req, res) => {
     }
     testimonialToUpdate.name = name;
     testimonialToUpdate.text = text;
+    testimonialToUpdate.status = "pending";
     await testimonialToUpdate.save();
 
     res.status(200).json({
@@ -168,6 +169,7 @@ const putUpdateTestimonialStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = req.user.user.id;
   const { id } = req.params;
+  let keptStatus = false;
   try {
     if (userId !== process.env.ADMIN_ID) {
       return res
@@ -175,11 +177,14 @@ const putUpdateTestimonialStatus = async (req, res) => {
         .json({ error: `Not Authorized to update the document status` });
     }
     const testimonialToUpdate = await Testimonial.findByPk(id);
+    keptStatus = status === testimonialToUpdate.status;
     testimonialToUpdate.status = status;
-    if (adminComment) {
-      testimonialToUpdate.admin_comment = status;
-    }
+    testimonialToUpdate.admin_comment = adminComment;
+
     await testimonialToUpdate.save();
+    if (keptStatus) {
+      return res.status(201).json({ message: `Updated admin comment message` });
+    }
     res.status(201).json({
       message: `Testimonial status changed to ${status}`,
     });
@@ -202,8 +207,9 @@ const getAllSpotlights = (req, res) => {
   }
 };
 
-const getSpotlightByID = async (req, res) => {
+const getSpotlightByUserID = async (req, res) => {
   const { userId } = req.params;
+  console.log(userId, " <-- USER ID");
   try {
     const targetedSpotlight = await AthleteProfile.findOne({
       where: { created_by: userId },
@@ -212,6 +218,25 @@ const getSpotlightByID = async (req, res) => {
       return res
         .status(404)
         .json({ error: `Cannot find the spotlight for user ${userId}` });
+    }
+    res.status(200).json(targetedSpotlight);
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: `Sever error: Unable to get targeted spotlight` });
+  }
+};
+
+const getSpotlightBySpotlightID = async (req, res) => {
+  const { spotlightId } = req.params;
+  console.log(spotlightId, " <-- SPOTLIGHT ID");
+  try {
+    const targetedSpotlight = await AthleteProfile.findByPk(spotlightId);
+    if (!targetedSpotlight) {
+      return res
+        .status(404)
+        .json({ error: `Cannot find the spotlight for user ${spotlightId}` });
     }
     res.status(200).json(targetedSpotlight);
   } catch (err) {
@@ -448,6 +473,7 @@ const putUpdateSpotlight = async (req, res) => {
     existingSpotlight.action_bio = actionBio;
     existingSpotlight.community_bio = communityBio;
     existingSpotlight.location = location;
+    existingSpotlight.status = "pending";
 
     // Complete S3 URLs and updates to photo columns
     if (filePath1) {
@@ -536,6 +562,7 @@ const putUpdateSpotlightStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = req.user.user.id;
   const { id } = req.params;
+  let keptStatus = false;
   try {
     if (userId !== process.env.ADMIN_ID) {
       return res
@@ -543,11 +570,14 @@ const putUpdateSpotlightStatus = async (req, res) => {
         .json({ error: `Not Authorized to update the document status` });
     }
     const spotlightToUpdate = await AthleteProfile.findByPk(id);
+    keptStatus = status === spotlightToUpdate.status;
     spotlightToUpdate.status = status;
-    if (adminComment) {
-      spotlightToUpdate.admin_comment = adminComment;
-    }
+    spotlightToUpdate.admin_comment = adminComment;
+
     await spotlightToUpdate.save();
+    if (keptStatus) {
+      return res.status(201).json({ message: `Updated admin comment message` });
+    }
     res.status(201).json({
       message: `Spotlight status changed to ${status}`,
     });
@@ -563,7 +593,7 @@ module.exports = {
   getAllTestimonials,
   getAllSpotlights,
   postAddTestimonial,
-  getSpotlightByID,
+  getSpotlightByUserID,
   postAddSpotlight,
   putUpdateSpotlight,
   getSingleTestimonial,
@@ -575,4 +605,5 @@ module.exports = {
   getTestimonialSubmissionByStatus,
   putUpdateTestimonialStatus,
   putUpdateSpotlightStatus,
+  getSpotlightBySpotlightID,
 };
