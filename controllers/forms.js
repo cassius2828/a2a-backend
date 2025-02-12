@@ -339,9 +339,9 @@ const postAddSpotlight = async (req, res) => {
     }
 
     // Complete S3 URLs
-    const profile_image = `https://${params1.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath1}`;
-    const action_image_1 = `https://${params2.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath2}`;
-    const action_image_2 = `https://${params3.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath3}`;
+    const profile_image = `${process.env.CDN_PATH}/${filePath1}`;
+    const action_image_1 = `${process.env.CDN_PATH}/${filePath2}`;
+    const action_image_2 = `${process.env.CDN_PATH}/${filePath3}`;
 
     // Create new athlete spotlight in the database
     const newAthleteSpotlight = await AthleteProfile.create({
@@ -477,22 +477,22 @@ const putUpdateSpotlight = async (req, res) => {
 
     // Complete S3 URLs and updates to photo columns
     if (filePath1) {
-      const profile_image = `https://${params1.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath1}`;
+      const profile_image = `${process.env.CDN_PATH}/${filePath1}`;
 
       existingSpotlight.profile_image = profile_image;
     }
     if (filePath2) {
-      const action_image_1 = `https://${params2.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath2}`;
+      const action_image_1 = `${process.env.CDN_PATH}/${filePath2}`;
       existingSpotlight.action_image_1 = action_image_1;
     }
     if (filePath3) {
-      const action_image_2 = `https://${params3.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath3}`;
+      const action_image_2 = `${process.env.CDN_PATH}/${filePath3}`;
       existingSpotlight.action_image_2 = action_image_2;
     }
 
     // Save the updated record to the database
     await existingSpotlight.save();
-    console.log(existingSpotlight, " <-- updated spotlight");
+
     res.status(200).json({
       message: `Updated athlete spotlight for ${existingSpotlight.first_name} ${existingSpotlight.last_name}`,
     });

@@ -164,7 +164,7 @@ const putUpdateUserInfo = async (req, res) => {
       };
 
       s3.send(new PutObjectCommand(params));
-      avatarLink = `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath}`;
+      avatarLink = `${process.env.CDN_PATH}/${filePath}`;
     }
     // check if another user is using the new email already
     const userByEmail = await User.findOne({ where: { email } });
