@@ -149,10 +149,10 @@ const deleteTestimonial = async (req, res) => {
 
 const getTestimonialSubmissionByStatus = async (req, res) => {
   const { status } = req.query;
-  const userId = req.user.user.id;
-
+  const userId = String(req.user.user.id);
+const ADMIN_ID = String(process.env.ADMIN_ID)
   try {
-    if (userId !== process.env.ADMIN_ID) {
+    if (userId !== ADMIN_ID) {
       return res.status(403).json({ error: `Unauthorized action` });
     }
     const testimonials = await Testimonial.findAll({
@@ -167,11 +167,12 @@ const getTestimonialSubmissionByStatus = async (req, res) => {
 
 const putUpdateTestimonialStatus = async (req, res) => {
   const { status, adminComment } = req.body;
-  const userId = req.user.user.id;
+  const userId = String(req.user.user.id);
+const ADMIN_ID = String(process.env.ADMIN_ID)
   const { id } = req.params;
   let keptStatus = false;
   try {
-    if (userId !== process.env.ADMIN_ID) {
+    if (userId !== ADMIN_ID) {
       return res
         .status(403)
         .json({ error: `Not Authorized to update the document status` });
@@ -534,10 +535,11 @@ const deleteSpotlight = async (req, res) => {
 
 const getSpotlightSubmissionByStatus = async (req, res) => {
   const { status } = req.query;
-  const userId = req.user.user.id;
+  const userId = String(req.user.user.id);
+  const ADMIN_ID = String(process.env.ADMIN_ID)
 
   try {
-    if (userId !== process.env.ADMIN_ID) {
+    if (userId !== ADMIN_ID) {
       return res.status(403).json({ error: `Unauthorized action` });
     }
     const spotlights = await AthleteProfile.findAll({
@@ -560,11 +562,12 @@ const getSpotlightSubmissionByStatus = async (req, res) => {
 
 const putUpdateSpotlightStatus = async (req, res) => {
   const { status, adminComment } = req.body;
-  const userId = req.user.user.id;
+  const userId = String(req.user.user.id);
+  const ADMIN_ID = String(process.env.ADMIN_ID)
   const { id } = req.params;
   let keptStatus = false;
   try {
-    if (userId !== process.env.ADMIN_ID) {
+    if (userId !== ADMIN_ID) {
       return res
         .status(403)
         .json({ error: `Not Authorized to update the document status` });
