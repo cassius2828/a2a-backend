@@ -19,7 +19,6 @@ const registerUser = async (req, res) => {
         error: "Missing required fields. Try again with all required fields",
       });
     }
-    console.log(User, " <-- user!!");
     const hashedPass = bcrypt.hashSync(password, 10);
     const existingEmail = await User.findOne({ where: { email } });
     if (existingEmail) {

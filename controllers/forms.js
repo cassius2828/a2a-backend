@@ -1,4 +1,4 @@
-const { AthleteProfile } = require("../config/database");
+const { AthleteProfile, User } = require("../config/database");
 const { Testimonial } = require("../config/database");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = new S3Client({ region: process.env.AWS_REGION });
@@ -14,7 +14,32 @@ const getAllTestimonials = async (req, res) => {
     res.send("testimonials fail");
   }
 };
+const getApprovedTestimonials = async (req, res) => {
+  try {
+    const testimonials = await Testimonial.findAll({
+      where: { status: "approved" },
+    });
+    const updatedTestimonials = await Promise.all(
+      testimonials.map(async (testimonial) => {
+        const hasUser = await User.findByPk(testimonial.user_id);
+     
+        if (hasUser && hasUser.avatar.includes(process.env.CDN_PATH)) {
+          return {
+            ...testimonial.toJSON(),
+            img: hasUser.avatar,
+          };
+        }
+        return testimonial.toJSON();
+      })
+    );
 
+
+    res.status(201).json(updatedTestimonials);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to get approved testimonials" });
+  }
+};
 const getAllUserTestimonials = async (req, res) => {
   const { userId } = req.params;
   try {
@@ -150,7 +175,7 @@ const deleteTestimonial = async (req, res) => {
 const getTestimonialSubmissionByStatus = async (req, res) => {
   const { status } = req.query;
   const userId = String(req.user.user.id);
-const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
   try {
     if (userId !== ADMIN_ID) {
       return res.status(403).json({ error: `Unauthorized action` });
@@ -168,7 +193,7 @@ const ADMIN_ID = String(process.env.ADMIN_ID)
 const putUpdateTestimonialStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = String(req.user.user.id);
-const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
   const { id } = req.params;
   let keptStatus = false;
   try {
@@ -210,7 +235,6 @@ const getAllSpotlights = (req, res) => {
 
 const getSpotlightByUserID = async (req, res) => {
   const { userId } = req.params;
-  console.log(userId, " <-- USER ID");
   try {
     const targetedSpotlight = await AthleteProfile.findOne({
       where: { created_by: userId },
@@ -231,7 +255,6 @@ const getSpotlightByUserID = async (req, res) => {
 
 const getSpotlightBySpotlightID = async (req, res) => {
   const { spotlightId } = req.params;
-  console.log(spotlightId, " <-- SPOTLIGHT ID");
   try {
     const targetedSpotlight = await AthleteProfile.findByPk(spotlightId);
     if (!targetedSpotlight) {
@@ -260,7 +283,6 @@ const postAddSpotlight = async (req, res) => {
     communityBio,
     location,
   } = req.body;
-  console.log(req.files, " <-- req.files");
   try {
     const existingSpotlight = await AthleteProfile.findOne({
       where: {
@@ -536,7 +558,7 @@ const deleteSpotlight = async (req, res) => {
 const getSpotlightSubmissionByStatus = async (req, res) => {
   const { status } = req.query;
   const userId = String(req.user.user.id);
-  const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
 
   try {
     if (userId !== ADMIN_ID) {
@@ -556,14 +578,25 @@ const getSpotlightSubmissionByStatus = async (req, res) => {
     });
     res.status(201).json(spotlights);
   } catch (err) {
+    res.status(500).json({
+      error: `Unable to get spotlights with status of ${status || "unknown"}`,
+    });
+  }
+};
+const getApprovedSpotlights = async (req, res) => {
+  try {
+    const spotlights = await AthleteProfile.findAll({
+      where: { status: "approved" },
+    });
+    res.status(201).json(spotlights);
+  } catch (err) {
     res.status(500).json({ error: "Unable to get approved spotlights" });
   }
 };
-
 const putUpdateSpotlightStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = String(req.user.user.id);
-  const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
   const { id } = req.params;
   let keptStatus = false;
   try {
@@ -609,4 +642,6 @@ module.exports = {
   putUpdateTestimonialStatus,
   putUpdateSpotlightStatus,
   getSpotlightBySpotlightID,
+  getApprovedSpotlights,
+  getApprovedTestimonials,
 };
