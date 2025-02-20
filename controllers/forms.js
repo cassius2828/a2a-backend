@@ -3,6 +3,9 @@ const { Testimonial } = require("../config/database");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const { v4: uuidv4 } = require("uuid");
+const Redis = require("ioredis");
+const redis = new Redis();
+
 ///////////////////////////
 // ! Testimonials
 ///////////////////////////
@@ -16,13 +19,18 @@ const getAllTestimonials = async (req, res) => {
 };
 const getApprovedTestimonials = async (req, res) => {
   try {
+    const cachedTestimonials = await redis.get("approved_testimonials");
+    if (cachedTestimonials) {
+      console.log("serving cached testimonials");
+      return res.status(200).json(JSON.parse(cachedTestimonials));
+    }
     const testimonials = await Testimonial.findAll({
       where: { status: "approved" },
     });
     const updatedTestimonials = await Promise.all(
       testimonials.map(async (testimonial) => {
         const hasUser = await User.findByPk(testimonial.user_id);
-     
+
         if (hasUser && hasUser.avatar.includes(process.env.CDN_PATH)) {
           return {
             ...testimonial.toJSON(),
@@ -32,8 +40,10 @@ const getApprovedTestimonials = async (req, res) => {
         return testimonial.toJSON();
       })
     );
-
-
+    await redis.set(
+      "approved_testimonials",
+      JSON.stringify(updatedTestimonials)
+    );
     res.status(201).json(updatedTestimonials);
   } catch (err) {
     console.error(err);
@@ -133,7 +143,7 @@ const putUpdateTestimonial = async (req, res) => {
     testimonialToUpdate.text = text;
     testimonialToUpdate.status = "pending";
     await testimonialToUpdate.save();
-
+    await redis.del("approved_testimonials");
     res.status(200).json({
       testimonial: testimonialToUpdate,
       message: `Successfully updated the testimonial by ${name}. The updated testimonial is now under review and requires admin approval before it can appear on the website.`,
@@ -160,6 +170,7 @@ const deleteTestimonial = async (req, res) => {
       console.log("No record found with the given id.");
       return res.status(404).json({ error: "Testimonial not found" });
     } else {
+      await redis.del("approved_testimonials");
       return res
         .status(204)
         .json({ message: `Successfully delete testimonial` });
@@ -211,6 +222,7 @@ const putUpdateTestimonialStatus = async (req, res) => {
     if (keptStatus) {
       return res.status(201).json({ message: `Updated admin comment message` });
     }
+    await redis.del("approved_testimonials");
     res.status(201).json({
       message: `Testimonial status changed to ${status}`,
     });
@@ -515,7 +527,7 @@ const putUpdateSpotlight = async (req, res) => {
 
     // Save the updated record to the database
     await existingSpotlight.save();
-
+    await redis.del("approved_spotlights");
     res.status(200).json({
       message: `Updated athlete spotlight for ${existingSpotlight.first_name} ${existingSpotlight.last_name}`,
     });
@@ -543,6 +555,7 @@ const deleteSpotlight = async (req, res) => {
         error: `Unable to delete spotlight belonging to athlete ID:${id}`,
       });
     } else {
+      await redis.del("approved_spotlights");
       return res.status(200).json({
         message: `Successfully deleted athlete profile of ID:${id}`,
       });
@@ -585,9 +598,14 @@ const getSpotlightSubmissionByStatus = async (req, res) => {
 };
 const getApprovedSpotlights = async (req, res) => {
   try {
+    const cachedSpotlights = await redis.get("approved_spotlights");
+    if (cachedSpotlights) {
+      return res.status(200).json(JSON.parse(cachedSpotlights));
+    }
     const spotlights = await AthleteProfile.findAll({
       where: { status: "approved" },
     });
+    await redis.set("approved_spotlights", JSON.stringify(spotlights));
     res.status(201).json(spotlights);
   } catch (err) {
     res.status(500).json({ error: "Unable to get approved spotlights" });
@@ -614,6 +632,7 @@ const putUpdateSpotlightStatus = async (req, res) => {
     if (keptStatus) {
       return res.status(201).json({ message: `Updated admin comment message` });
     }
+    await redis.del("approved_spotlights");
     res.status(201).json({
       message: `Spotlight status changed to ${status}`,
     });
