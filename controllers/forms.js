@@ -1,8 +1,11 @@
-const { AthleteProfile } = require("../config/database");
+const { AthleteProfile, User } = require("../config/database");
 const { Testimonial } = require("../config/database");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const { v4: uuidv4 } = require("uuid");
+const Redis = require("ioredis");
+const redis = new Redis();
+
 ///////////////////////////
 // ! Testimonials
 ///////////////////////////
@@ -14,7 +17,39 @@ const getAllTestimonials = async (req, res) => {
     res.send("testimonials fail");
   }
 };
+const getApprovedTestimonials = async (req, res) => {
+  try {
+    const cachedTestimonials = await redis.get("approved_testimonials");
+    if (cachedTestimonials) {
+  
+      return res.status(200).json(JSON.parse(cachedTestimonials));
+    }
+    const testimonials = await Testimonial.findAll({
+      where: { status: "approved" },
+    });
+    const updatedTestimonials = await Promise.all(
+      testimonials.map(async (testimonial) => {
+        const hasUser = await User.findByPk(testimonial.user_id);
 
+        if (hasUser && hasUser.avatar.includes(process.env.CDN_PATH)) {
+          return {
+            ...testimonial.toJSON(),
+            img: hasUser.avatar,
+          };
+        }
+        return testimonial.toJSON();
+      })
+    );
+    await redis.set(
+      "approved_testimonials",
+      JSON.stringify(updatedTestimonials)
+    );
+    res.status(201).json(updatedTestimonials);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Unable to get approved testimonials" });
+  }
+};
 const getAllUserTestimonials = async (req, res) => {
   const { userId } = req.params;
   try {
@@ -108,7 +143,7 @@ const putUpdateTestimonial = async (req, res) => {
     testimonialToUpdate.text = text;
     testimonialToUpdate.status = "pending";
     await testimonialToUpdate.save();
-
+    await redis.del("approved_testimonials");
     res.status(200).json({
       testimonial: testimonialToUpdate,
       message: `Successfully updated the testimonial by ${name}. The updated testimonial is now under review and requires admin approval before it can appear on the website.`,
@@ -132,9 +167,10 @@ const deleteTestimonial = async (req, res) => {
     });
 
     if (deletedCount === 0) {
-      console.log("No record found with the given id.");
+
       return res.status(404).json({ error: "Testimonial not found" });
     } else {
+      await redis.del("approved_testimonials");
       return res
         .status(204)
         .json({ message: `Successfully delete testimonial` });
@@ -150,7 +186,7 @@ const deleteTestimonial = async (req, res) => {
 const getTestimonialSubmissionByStatus = async (req, res) => {
   const { status } = req.query;
   const userId = String(req.user.user.id);
-const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
   try {
     if (userId !== ADMIN_ID) {
       return res.status(403).json({ error: `Unauthorized action` });
@@ -168,7 +204,7 @@ const ADMIN_ID = String(process.env.ADMIN_ID)
 const putUpdateTestimonialStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = String(req.user.user.id);
-const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
   const { id } = req.params;
   let keptStatus = false;
   try {
@@ -186,6 +222,7 @@ const ADMIN_ID = String(process.env.ADMIN_ID)
     if (keptStatus) {
       return res.status(201).json({ message: `Updated admin comment message` });
     }
+    await redis.del("approved_testimonials");
     res.status(201).json({
       message: `Testimonial status changed to ${status}`,
     });
@@ -210,7 +247,6 @@ const getAllSpotlights = (req, res) => {
 
 const getSpotlightByUserID = async (req, res) => {
   const { userId } = req.params;
-  console.log(userId, " <-- USER ID");
   try {
     const targetedSpotlight = await AthleteProfile.findOne({
       where: { created_by: userId },
@@ -231,7 +267,6 @@ const getSpotlightByUserID = async (req, res) => {
 
 const getSpotlightBySpotlightID = async (req, res) => {
   const { spotlightId } = req.params;
-  console.log(spotlightId, " <-- SPOTLIGHT ID");
   try {
     const targetedSpotlight = await AthleteProfile.findByPk(spotlightId);
     if (!targetedSpotlight) {
@@ -260,7 +295,6 @@ const postAddSpotlight = async (req, res) => {
     communityBio,
     location,
   } = req.body;
-  console.log(req.files, " <-- req.files");
   try {
     const existingSpotlight = await AthleteProfile.findOne({
       where: {
@@ -272,7 +306,7 @@ const postAddSpotlight = async (req, res) => {
         error: `User ${firstName} ${lastName} (userId:${userId}) already has an athlete spotlight. Please go to edit your current spotlight or contact developer for assistance at cassius.reynolds.dev@gmail.com`,
       });
     }
-
+console.log(req.files, ' <-- req.files')
     if (!firstName || !lastName || !sport) {
       return res.status(400).json({
         error:
@@ -284,7 +318,7 @@ const postAddSpotlight = async (req, res) => {
     let filePath1, filePath2, filePath3;
     let params1, params2, params3;
 
-    if (req.files.length === 3) {
+    if (req.files?.length === 3) {
       // Generate unique file paths for each image
       filePath1 = `a2a/images/athletes/${firstName}-${lastName}-${userId}/profileImage-${uuidv4()}-${
         req.files[0]?.originalname
@@ -355,9 +389,12 @@ const postAddSpotlight = async (req, res) => {
       community_bio: communityBio,
       location,
       // since creation happens just once, this will set value to null if no photo is supplied
-      profile_image: req.files[0].originalname ? profile_image : null,
-      action_image_1: req.files[1].originalname ? action_image_1 : null,
-      action_image_2: req.files[2].originalname ? action_image_2 : null,
+      profile_image:
+        req.files && req.files[0]?.originalname ? profile_image : null,
+      action_image_1:
+        req.files && req.files[1]?.originalname ? action_image_1 : null,
+      action_image_2:
+        req.files && req.files[2]?.originalname ? action_image_2 : null,
       created_by: userId,
     });
 
@@ -410,7 +447,7 @@ const putUpdateSpotlight = async (req, res) => {
     let filePath1, filePath2, filePath3;
     let params1, params2, params3;
 
-    if (req.files.length === 3) {
+    if (req.files?.length === 3) {
       // Generate unique file paths for each image
       filePath1 = `a2a/images/athletes/${firstName}-${lastName}-${userId}/profileImage-${uuidv4()}-${
         req.files[0]?.originalname
@@ -493,7 +530,7 @@ const putUpdateSpotlight = async (req, res) => {
 
     // Save the updated record to the database
     await existingSpotlight.save();
-
+    await redis.del("approved_spotlights");
     res.status(200).json({
       message: `Updated athlete spotlight for ${existingSpotlight.first_name} ${existingSpotlight.last_name}`,
     });
@@ -521,6 +558,7 @@ const deleteSpotlight = async (req, res) => {
         error: `Unable to delete spotlight belonging to athlete ID:${id}`,
       });
     } else {
+      await redis.del("approved_spotlights");
       return res.status(200).json({
         message: `Successfully deleted athlete profile of ID:${id}`,
       });
@@ -536,7 +574,7 @@ const deleteSpotlight = async (req, res) => {
 const getSpotlightSubmissionByStatus = async (req, res) => {
   const { status } = req.query;
   const userId = String(req.user.user.id);
-  const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
 
   try {
     if (userId !== ADMIN_ID) {
@@ -556,14 +594,30 @@ const getSpotlightSubmissionByStatus = async (req, res) => {
     });
     res.status(201).json(spotlights);
   } catch (err) {
+    res.status(500).json({
+      error: `Unable to get spotlights with status of ${status || "unknown"}`,
+    });
+  }
+};
+const getApprovedSpotlights = async (req, res) => {
+  try {
+    const cachedSpotlights = await redis.get("approved_spotlights");
+    if (cachedSpotlights) {
+      return res.status(200).json(JSON.parse(cachedSpotlights));
+    }
+    const spotlights = await AthleteProfile.findAll({
+      where: { status: "approved" },
+    });
+    await redis.set("approved_spotlights", JSON.stringify(spotlights));
+    res.status(201).json(spotlights);
+  } catch (err) {
     res.status(500).json({ error: "Unable to get approved spotlights" });
   }
 };
-
 const putUpdateSpotlightStatus = async (req, res) => {
   const { status, adminComment } = req.body;
   const userId = String(req.user.user.id);
-  const ADMIN_ID = String(process.env.ADMIN_ID)
+  const ADMIN_ID = String(process.env.ADMIN_ID);
   const { id } = req.params;
   let keptStatus = false;
   try {
@@ -581,6 +635,7 @@ const putUpdateSpotlightStatus = async (req, res) => {
     if (keptStatus) {
       return res.status(201).json({ message: `Updated admin comment message` });
     }
+    await redis.del("approved_spotlights");
     res.status(201).json({
       message: `Spotlight status changed to ${status}`,
     });
@@ -609,4 +664,6 @@ module.exports = {
   putUpdateTestimonialStatus,
   putUpdateSpotlightStatus,
   getSpotlightBySpotlightID,
+  getApprovedSpotlights,
+  getApprovedTestimonials,
 };

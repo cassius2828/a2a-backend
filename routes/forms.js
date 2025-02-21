@@ -6,6 +6,8 @@ const upload = require("multer")();
 
 // testimonials
 router.get("/testimonials", formsCtrl.getAllTestimonials);
+router.get("/testimonials/approved", formsCtrl.getApprovedTestimonials);
+
 router.get(
   "/testimonials/status",
   verifyToken,
@@ -22,16 +24,18 @@ router.put(
 );
 router.delete("/testimonials/:id", formsCtrl.deleteTestimonial);
 
-
-
 // spotlights
 router.get("/spotlights", formsCtrl.getAllSpotlights);
+router.get("/spotlights/approved", formsCtrl.getApprovedSpotlights);
 router.get(
   "/spotlights/status",
   verifyToken,
   formsCtrl.getSpotlightSubmissionByStatus
 );
-router.get("/spotlights/:spotlightId/spotlight-id", formsCtrl.getSpotlightBySpotlightID);
+router.get(
+  "/spotlights/:spotlightId/spotlight-id",
+  formsCtrl.getSpotlightBySpotlightID
+);
 router.get("/spotlights/:userId", formsCtrl.getSpotlightByUserID);
 router.put(
   "/spotlights/:id/status",

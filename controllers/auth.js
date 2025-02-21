@@ -19,7 +19,6 @@ const registerUser = async (req, res) => {
         error: "Missing required fields. Try again with all required fields",
       });
     }
-    console.log(User, " <-- user!!");
     const hashedPass = bcrypt.hashSync(password, 10);
     const existingEmail = await User.findOne({ where: { email } });
     if (existingEmail) {
@@ -132,8 +131,7 @@ const postValidateUserPassword = async (req, res) => {
 const putUpdateUserInfo = async (req, res) => {
   const { id } = req.user.user;
   const { firstName, lastName, email, phone, removeAvatar } = req.body;
-  console.log(req.body, " <-- reqbody");
-  console.log(req.file, " <-- reqfile");
+
   let confirmEmailMessage = "";
   try {
     const user = await User.findByPk(id);
