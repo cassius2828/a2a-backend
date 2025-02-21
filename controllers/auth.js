@@ -131,8 +131,7 @@ const postValidateUserPassword = async (req, res) => {
 const putUpdateUserInfo = async (req, res) => {
   const { id } = req.user.user;
   const { firstName, lastName, email, phone, removeAvatar } = req.body;
-  console.log(req.body, " <-- reqbody");
-  console.log(req.file, " <-- reqfile");
+
   let confirmEmailMessage = "";
   try {
     const user = await User.findByPk(id);

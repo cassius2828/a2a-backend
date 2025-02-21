@@ -21,7 +21,7 @@ const getApprovedTestimonials = async (req, res) => {
   try {
     const cachedTestimonials = await redis.get("approved_testimonials");
     if (cachedTestimonials) {
-      console.log("serving cached testimonials");
+  
       return res.status(200).json(JSON.parse(cachedTestimonials));
     }
     const testimonials = await Testimonial.findAll({
@@ -167,7 +167,7 @@ const deleteTestimonial = async (req, res) => {
     });
 
     if (deletedCount === 0) {
-      console.log("No record found with the given id.");
+
       return res.status(404).json({ error: "Testimonial not found" });
     } else {
       await redis.del("approved_testimonials");
@@ -306,7 +306,7 @@ const postAddSpotlight = async (req, res) => {
         error: `User ${firstName} ${lastName} (userId:${userId}) already has an athlete spotlight. Please go to edit your current spotlight or contact developer for assistance at cassius.reynolds.dev@gmail.com`,
       });
     }
-
+console.log(req.files, ' <-- req.files')
     if (!firstName || !lastName || !sport) {
       return res.status(400).json({
         error:
@@ -318,7 +318,7 @@ const postAddSpotlight = async (req, res) => {
     let filePath1, filePath2, filePath3;
     let params1, params2, params3;
 
-    if (req.files.length === 3) {
+    if (req.files?.length === 3) {
       // Generate unique file paths for each image
       filePath1 = `a2a/images/athletes/${firstName}-${lastName}-${userId}/profileImage-${uuidv4()}-${
         req.files[0]?.originalname
@@ -389,9 +389,12 @@ const postAddSpotlight = async (req, res) => {
       community_bio: communityBio,
       location,
       // since creation happens just once, this will set value to null if no photo is supplied
-      profile_image: req.files[0].originalname ? profile_image : null,
-      action_image_1: req.files[1].originalname ? action_image_1 : null,
-      action_image_2: req.files[2].originalname ? action_image_2 : null,
+      profile_image:
+        req.files && req.files[0]?.originalname ? profile_image : null,
+      action_image_1:
+        req.files && req.files[1]?.originalname ? action_image_1 : null,
+      action_image_2:
+        req.files && req.files[2]?.originalname ? action_image_2 : null,
       created_by: userId,
     });
 
@@ -444,7 +447,7 @@ const putUpdateSpotlight = async (req, res) => {
     let filePath1, filePath2, filePath3;
     let params1, params2, params3;
 
-    if (req.files.length === 3) {
+    if (req.files?.length === 3) {
       // Generate unique file paths for each image
       filePath1 = `a2a/images/athletes/${firstName}-${lastName}-${userId}/profileImage-${uuidv4()}-${
         req.files[0]?.originalname
