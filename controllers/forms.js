@@ -4,7 +4,7 @@ const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const { v4: uuidv4 } = require("uuid");
 const Redis = require("ioredis");
-const redis = new Redis();
+const redis = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379");
 
 ///////////////////////////
 // ! Testimonials
@@ -21,7 +21,6 @@ const getApprovedTestimonials = async (req, res) => {
   try {
     const cachedTestimonials = await redis.get("approved_testimonials");
     if (cachedTestimonials) {
-  
       return res.status(200).json(JSON.parse(cachedTestimonials));
     }
     const testimonials = await Testimonial.findAll({
@@ -167,7 +166,6 @@ const deleteTestimonial = async (req, res) => {
     });
 
     if (deletedCount === 0) {
-
       return res.status(404).json({ error: "Testimonial not found" });
     } else {
       await redis.del("approved_testimonials");
@@ -306,7 +304,7 @@ const postAddSpotlight = async (req, res) => {
         error: `User ${firstName} ${lastName} (userId:${userId}) already has an athlete spotlight. Please go to edit your current spotlight or contact developer for assistance at cassius.reynolds.dev@gmail.com`,
       });
     }
-console.log(req.files, ' <-- req.files')
+    console.log(req.files, " <-- req.files");
     if (!firstName || !lastName || !sport) {
       return res.status(400).json({
         error:
