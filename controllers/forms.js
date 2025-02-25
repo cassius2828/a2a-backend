@@ -4,8 +4,14 @@ const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const { v4: uuidv4 } = require("uuid");
 const Redis = require("ioredis");
-const redis = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379");
+const redis = new Redis(process.env.REDIS_CLOUD_URL || "redis://127.0.0.1:6379");
+redis.on('connect', () => {
+  console.log('Connected to Redis');
+});
 
+redis.on('error', (err) => {
+  console.error('Redis connection error:', err);
+});
 ///////////////////////////
 // ! Testimonials
 ///////////////////////////
